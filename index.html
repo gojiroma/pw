@@ -105,6 +105,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
       <div class="actions">
         <span class="status" id="mailStatus" role="status"></span>
         <button type="button" id="mailBtn64">全体64文字</button>
+        <button type="button" id="mailBtn50">全体50文字</button>
         <button type="button" id="mailBtnLocal">@前64文字</button>
       </div>
     </div>
@@ -171,7 +172,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 
   const DOMAIN = "@poet.blue";
   // total=true: アドレス全体で64文字 / false: @より前が64文字
-  function makeMail(total) { return randString(ALNUM, total ? 64 - DOMAIN.length : 64) + DOMAIN; }
+  function makeMail(total) { return randString(ALNUM, (total || 0) ? total - DOMAIN.length : 64) + DOMAIN; }
 
   function makePassword(len) {
     const sym = symbolSet();
@@ -229,14 +230,18 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
   }
 
   const mailMeta = document.getElementById("mailMeta");
+  function mailLabel(total) {
+    return total ? `全体${total}文字（@前${total - DOMAIN.length}文字）` : "@前64文字（全体74文字）";
+  }
   function mailHandler(total) {
     return async () => {
       const m = makeMail(total); renderMail(m); flash(mailOut);
-      mailMeta.textContent = total ? "全体64文字（@前54文字）" : "@前64文字（全体74文字）";
+      mailMeta.textContent = mailLabel(total);
       setStatus(document.getElementById("mailStatus"), await copy(m, mailOut));
     };
   }
-  document.getElementById("mailBtn64").addEventListener("click", mailHandler(true));
+  document.getElementById("mailBtn64").addEventListener("click", mailHandler(64));
+  document.getElementById("mailBtn50").addEventListener("click", mailHandler(50));
   document.getElementById("mailBtnLocal").addEventListener("click", mailHandler(false));
   document.getElementById("pwBtn").addEventListener("click", async () => {
     const p = makePassword(currentLen()); paint(pwOut, p); flash(pwOut); updateMeta();
@@ -254,8 +259,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
   document.querySelectorAll('input[name="len"]').forEach(r => r.addEventListener("change", updateMeta));
 
   // 初期表示（コピーはしない）
-  renderMail(makeMail(true));
-  mailMeta.textContent = "全体64文字（@前54文字）";
+  renderMail(makeMail(64));
+  mailMeta.textContent = mailLabel(64);
   paint(pwOut, makePassword(currentLen()));
   updateMeta();
 })();

@@ -105,7 +105,6 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
       <div class="actions">
         <span class="status" id="mailStatus" role="status"></span>
         <button type="button" id="mailBtn64">全体64文字</button>
-        <button type="button" id="mailBtn45">全体45文字</button>
         <button type="button" id="mailBtn50">全体50文字</button>
         <button type="button" id="mailBtnLocal">@前64文字</button>
       </div>
@@ -126,6 +125,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
           <input type="radio" name="len" id="len16" value="16"><label for="len16">16</label>
           <input type="radio" name="len" id="len20" value="20"><label for="len20">20</label>
           <input type="radio" name="len" id="len32" value="32"><label for="len32">32</label>
+          <input type="radio" name="len" id="len45" value="45"><label for="len45">45</label>
           <input type="radio" name="len" id="len64" value="64" checked><label for="len64">64</label>
           <input type="radio" name="len" id="len128" value="128"><label for="len128">128</label>
         </div>
@@ -243,7 +243,6 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
     };
   }
   document.getElementById("mailBtn64").addEventListener("click", mailHandler(64));
-  document.getElementById("mailBtn45").addEventListener("click", mailHandler(45));
   document.getElementById("mailBtn50").addEventListener("click", mailHandler(50));
   document.getElementById("mailBtnLocal").addEventListener("click", mailHandler(false));
   async function regenPassword() {

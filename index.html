@@ -244,10 +244,11 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
   document.getElementById("mailBtn64").addEventListener("click", mailHandler(64));
   document.getElementById("mailBtn50").addEventListener("click", mailHandler(50));
   document.getElementById("mailBtnLocal").addEventListener("click", mailHandler(false));
-  document.getElementById("pwBtn").addEventListener("click", async () => {
+  async function regenPassword() {
     const p = makePassword(currentLen()); paint(pwOut, p); flash(pwOut); updateMeta();
     setStatus(document.getElementById("pwStatus"), await copy(p, pwOut));
-  });
+  }
+  document.getElementById("pwBtn").addEventListener("click", regenPassword);
 
   // 記号欄：フォーカスで空に、空のまま離れたら直前の値に戻す
   const symInput = document.getElementById("symbols");
@@ -256,10 +257,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
   symInput.addEventListener("blur", () => { if (symInput.value === "") symInput.value = lastSym; updateMeta(); });
   symInput.addEventListener("input", updateMeta);
   const noSym = document.getElementById("noSym");
-  noSym.addEventListener("change", () => { symInput.disabled = noSym.checked; updateMeta(); });
-  document.querySelectorAll('input[name="len"]').forEach(r => r.addEventListener("change", () => {
-    paint(pwOut, makePassword(currentLen())); flash(pwOut); updateMeta();
-  }));
+  noSym.addEventListener("change", () => { symInput.disabled = noSym.checked; regenPassword(); });
+  document.querySelectorAll('input[name="len"]').forEach(r => r.addEventListener("change", regenPassword));
 
   // 初期表示（コピーはしない）
   renderMail(makeMail(64));

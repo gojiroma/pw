@@ -257,7 +257,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
   symInput.addEventListener("input", updateMeta);
   const noSym = document.getElementById("noSym");
   noSym.addEventListener("change", () => { symInput.disabled = noSym.checked; updateMeta(); });
-  document.querySelectorAll('input[name="len"]').forEach(r => r.addEventListener("change", updateMeta));
+  document.querySelectorAll('input[name="len"]').forEach(r => r.addEventListener("change", () => {
+    paint(pwOut, makePassword(currentLen())); flash(pwOut); updateMeta();
+  }));
 
   // 初期表示（コピーはしない）
   renderMail(makeMail(64));

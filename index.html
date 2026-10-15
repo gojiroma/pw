@@ -98,13 +98,14 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
   <section aria-labelledby="mail-h">
     <div class="head">
       <h2 id="mail-h">メールアドレス</h2>
-      <span class="meta">[A-Za-z0-9]×64 @poet.blue</span>
+      <span class="meta" id="mailMeta"></span>
     </div>
     <div class="out" id="mailOut" tabindex="0"></div>
     <div class="controls">
       <div class="actions">
         <span class="status" id="mailStatus" role="status"></span>
-        <button type="button" id="mailBtn">生成してコピー</button>
+        <button type="button" id="mailBtn64">全体64文字</button>
+        <button type="button" id="mailBtnLocal">@前64文字</button>
       </div>
     </div>
   </section>
@@ -119,6 +120,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
       <div class="field">
         <span id="lenLabel" style="font-size:.75rem;color:var(--muted);letter-spacing:.04em">文字数</span>
         <div class="seg" role="radiogroup" aria-labelledby="lenLabel">
+          <input type="radio" name="len" id="len16" value="16"><label for="len16">16</label>
+          <input type="radio" name="len" id="len20" value="20"><label for="len20">20</label>
           <input type="radio" name="len" id="len32" value="32"><label for="len32">32</label>
           <input type="radio" name="len" id="len64" value="64" checked><label for="len64">64</label>
           <input type="radio" name="len" id="len128" value="128"><label for="len128">128</label>
@@ -165,7 +168,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
     return [...new Set([...raw].filter(c => !/[A-Za-z0-9\s]/.test(c)))].join("");
   }
 
-  function makeMail() { return randString(ALNUM, 64) + "@poet.blue"; }
+  const DOMAIN = "@poet.blue";
+  // total=true: アドレス全体で64文字 / false: @より前が64文字
+  function makeMail(total) { return randString(ALNUM, total ? 64 - DOMAIN.length : 64) + DOMAIN; }
 
   function makePassword(len) {
     const sym = symbolSet();
@@ -222,10 +227,16 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
     pwMeta.textContent = `${currentLen()}文字 / 候補 ${62 + sym.length}種`;
   }
 
-  document.getElementById("mailBtn").addEventListener("click", async () => {
-    const m = makeMail(); renderMail(m); flash(mailOut);
-    setStatus(document.getElementById("mailStatus"), await copy(m, mailOut));
-  });
+  const mailMeta = document.getElementById("mailMeta");
+  function mailHandler(total) {
+    return async () => {
+      const m = makeMail(total); renderMail(m); flash(mailOut);
+      mailMeta.textContent = total ? "全体64文字（@前54文字）" : "@前64文字（全体74文字）";
+      setStatus(document.getElementById("mailStatus"), await copy(m, mailOut));
+    };
+  }
+  document.getElementById("mailBtn64").addEventListener("click", mailHandler(true));
+  document.getElementById("mailBtnLocal").addEventListener("click", mailHandler(false));
   document.getElementById("pwBtn").addEventListener("click", async () => {
     const p = makePassword(currentLen()); paint(pwOut, p); flash(pwOut); updateMeta();
     setStatus(document.getElementById("pwStatus"), await copy(p, pwOut));
@@ -240,7 +251,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
   document.querySelectorAll('input[name="len"]').forEach(r => r.addEventListener("change", updateMeta));
 
   // 初期表示（コピーはしない）
-  renderMail(makeMail());
+  renderMail(makeMail(true));
+  mailMeta.textContent = "全体64文字（@前54文字）";
   paint(pwOut, makePassword(currentLen()));
   updateMeta();
 })();

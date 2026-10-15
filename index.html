@@ -128,7 +128,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
         </div>
       </div>
       <div class="field grow">
-        <label for="symbols">使う記号</label>
+        <label for="symbols">使う記号 <label style="display:inline;margin-left:8px"><input type="checkbox" id="noSym"> なし</label></label>
         <input type="text" id="symbols" value="!#$%&amp;()*+-./:;=?@[]^_{|}~" spellcheck="false" autocomplete="off">
       </div>
       <div class="actions">
@@ -136,7 +136,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
         <button type="button" id="pwBtn">生成してコピー</button>
       </div>
     </div>
-    <p class="note">大文字・小文字・数字・記号を必ず1文字以上含みます。記号欄はクリックで空になり、空のまま離れると元に戻ります。</p>
+    <p class="note">大文字・小文字・数字・記号（「なし」選択時は除く）を必ず1文字以上含みます。記号欄はクリックで空になり、空のまま離れると元に戻ります。</p>
   </section>
 </main>
 
@@ -164,6 +164,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 
   // 記号欄から英数字・空白を除き、重複を除去
   function symbolSet() {
+    if (document.getElementById("noSym").checked) return "";
     const raw = document.getElementById("symbols").value;
     return [...new Set([...raw].filter(c => !/[A-Za-z0-9\s]/.test(c)))].join("");
   }
@@ -248,6 +249,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
   symInput.addEventListener("focus", () => { lastSym = symInput.value; symInput.value = ""; });
   symInput.addEventListener("blur", () => { if (symInput.value === "") symInput.value = lastSym; updateMeta(); });
   symInput.addEventListener("input", updateMeta);
+  const noSym = document.getElementById("noSym");
+  noSym.addEventListener("change", () => { symInput.disabled = noSym.checked; updateMeta(); });
   document.querySelectorAll('input[name="len"]').forEach(r => r.addEventListener("change", updateMeta));
 
   // 初期表示（コピーはしない）

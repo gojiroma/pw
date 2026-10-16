@@ -114,6 +114,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
     <div class="controls">
       <div class="actions">
         <span class="status" id="mailStatus" role="status"></span>
+        <button type="button" id="mailCopyLocal">@前をコピー</button>
+        <button type="button" id="mailCopyDomain">@以降をコピー</button>
         <button type="button" id="mailBtn64">全体64文字</button>
         <button type="button" id="mailBtn50">全体50文字</button>
         <button type="button" id="mailBtnLocal">@前64文字</button>
@@ -255,7 +257,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
       } else el.append(part);
     }
   }
+  let currentMail = "";
   function renderMail(addr) {
+    currentMail = addr;
     const [local] = addr.split("@");
     paint(mailOut, local);
     const d = document.createElement("span"); d.className = "dom"; d.textContent = "@poet.blue";
@@ -287,6 +291,14 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
   document.getElementById("mailBtn64").addEventListener("click", mailHandler(64));
   document.getElementById("mailBtn50").addEventListener("click", mailHandler(50));
   document.getElementById("mailBtnLocal").addEventListener("click", mailHandler(false));
+  // 現在のアドレスの一部だけをコピー（生成はしない）
+  async function copyMailPart(part) {
+    const i = currentMail.indexOf("@");
+    const text = part === "local" ? currentMail.slice(0, i) : currentMail.slice(i);
+    setStatus(document.getElementById("mailStatus"), await copy(text, mailOut));
+  }
+  document.getElementById("mailCopyLocal").addEventListener("click", () => copyMailPart("local"));
+  document.getElementById("mailCopyDomain").addEventListener("click", () => copyMailPart("domain"));
   async function regenPassword() {
     const p = makePassword(currentLen()); paint(pwOut, p); flash(pwOut); updateMeta();
     setStatus(document.getElementById("pwStatus"), await copy(p, pwOut));

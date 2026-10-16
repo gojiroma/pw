@@ -69,6 +69,12 @@ input[type=text],select{
   font-family:var(--f-mono); font-size:.85rem; color:var(--fg); letter-spacing:0;
   padding:6px 10px; cursor:pointer; background:var(--bg); border:1px solid var(--line); border-radius:6px;
 }
+.seg.big label{font-size:1.05rem; font-weight:700; padding:12px 28px}
+.sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+input[type=number]{
+  font-family:var(--f-mono); font-size:.9rem; color:var(--fg);
+  background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:6px 8px;
+}
 .seg input:checked + label{background:var(--accent); color:var(--accent-fg)}
 .seg input:focus-visible + label{outline:2px solid var(--accent); outline-offset:-4px}
 .actions{display:flex; align-items:center; gap:12px; margin-left:auto}
@@ -118,7 +124,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
     <div class="out" id="pwOut" tabindex="0"></div>
     <div class="controls">
       <div class="field">
-        <span id="lenLabel" style="font-size:.75rem;color:var(--muted);letter-spacing:.04em">文字数</span>
+        <label for="lenNum" id="lenLabel">文字数 <input type="number" id="lenNum" min="4" max="1024" step="1" value="64" inputmode="numeric" style="width:6em;margin-left:8px"></label>
         <div class="seg" role="radiogroup" aria-labelledby="lenLabel">
           <input type="radio" name="len" id="len8" value="8"><label for="len8">8</label>
           <input type="radio" name="len" id="len10" value="10"><label for="len10">10</label>
@@ -142,7 +148,12 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
         </div>
       </div>
       <div class="field grow">
-        <label for="symbols">使う記号 <label style="display:inline;margin-left:8px"><input type="checkbox" id="noSym"> なし</label></label>
+        <span id="symLabel" style="font-size:.75rem;color:var(--muted);letter-spacing:.04em">記号</span>
+        <div class="seg big" role="radiogroup" aria-labelledby="symLabel">
+          <input type="radio" name="sym" id="symOn" value="on" checked><label for="symOn">あり</label>
+          <input type="radio" name="sym" id="symOff" value="off"><label for="symOff">なし</label>
+        </div>
+        <label for="symbols" class="sr">使う記号</label>
         <input type="text" id="symbols" value="!#$%&amp;()*+-./:;=?@[]^_{|}~" spellcheck="false" autocomplete="off">
       </div>
       <div class="actions">
@@ -150,7 +161,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
         <button type="button" id="pwBtn">生成してコピー</button>
       </div>
     </div>
-    <p class="note">大文字・小文字・数字・記号（「なし」選択時は除く）を必ず1文字以上含みます。記号欄はクリックで空になり、空のまま離れると元に戻ります。ペーストすると重複・英数字・空白を除いた記号だけに整形されます。</p>
+    <p class="note">大文字・小文字・数字・記号（記号「なし」選択時は除く）を必ず1文字以上含みます。記号欄はクリックで空になり、空のまま離れると元に戻ります。ペーストすると重複・英数字・空白を除いた記号だけに整形されます。</p>
   </section>
 </main>
 
@@ -178,7 +189,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 
   // 記号欄から英数字・空白を除き、重複を除去
   function symbolSet() {
-    if (document.getElementById("noSym").checked) return "";
+    if (document.getElementById("symOff").checked) return "";
     const raw = document.getElementById("symbols").value;
     return [...new Set([...raw].filter(c => !/[A-Za-z0-9\s]/.test(c)))].join("");
   }
@@ -236,7 +247,12 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
     const d = document.createElement("span"); d.className = "dom"; d.textContent = "@poet.blue";
     mailOut.append(d);
   }
-  function currentLen() { return +document.querySelector('input[name="len"]:checked').value; }
+  const lenNum = document.getElementById("lenNum");
+  function currentLen() { return Math.min(1024, Math.max(4, Math.floor(+lenNum.value) || 64)); }
+  function syncRadio() {
+    const r = document.getElementById("len" + currentLen());
+    document.querySelectorAll('input[name="len"]').forEach(x => x.checked = (x === r));
+  }
   function updateMeta() {
     const sym = symbolSet();
     pwMeta.textContent = `${currentLen()}文字 / 候補 ${62 + sym.length}種`;
@@ -275,9 +291,13 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
     symInput.value = [...new Set([...raw].filter(c => !/[A-Za-z0-9\s]/.test(c)))].join("");
     updateMeta();
   });
-  const noSym = document.getElementById("noSym");
-  noSym.addEventListener("change", () => { symInput.disabled = noSym.checked; regenPassword(); });
-  document.querySelectorAll('input[name="len"]').forEach(r => r.addEventListener("change", regenPassword));
+  document.querySelectorAll('input[name="sym"]').forEach(r => r.addEventListener("change", () => {
+    symInput.disabled = document.getElementById("symOff").checked; regenPassword();
+  }));
+  document.querySelectorAll('input[name="len"]').forEach(r => r.addEventListener("change", () => { lenNum.value = r.value; regenPassword(); }));
+  lenNum.addEventListener("input", () => { syncRadio(); updateMeta(); });
+  lenNum.addEventListener("change", () => { lenNum.value = currentLen(); syncRadio(); regenPassword(); });
+  lenNum.addEventListener("keydown", e => { if (e.key === "Enter") { lenNum.blur(); } });
 
   // 初期表示（コピーはしない）
   renderMail(makeMail(64));

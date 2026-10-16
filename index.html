@@ -112,6 +112,22 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
     </div>
     <div class="outrow"><div class="out" id="mailOut" tabindex="0"></div><div class="qr" id="mailQr" role="img" aria-label="メールアドレスのQRコード"></div></div>
     <div class="controls">
+      <div class="field">
+        <span id="mUpLabel" style="font-size:.75rem;color:var(--muted);letter-spacing:.04em">大文字</span>
+        <div class="seg" role="radiogroup" aria-labelledby="mUpLabel">
+          <input type="radio" name="mup" id="mUpOn" value="on" checked><label for="mUpOn">あり</label>
+          <input type="radio" name="mup" id="mUpOff" value="off"><label for="mUpOff">なし</label>
+        </div>
+      </div>
+      <div class="field">
+        <span id="mTgtLabel" style="font-size:.75rem;color:var(--muted);letter-spacing:.04em">任意の文字数</span>
+        <div class="seg" role="radiogroup" aria-labelledby="mTgtLabel">
+          <input type="radio" name="mtgt" id="mTgtLocal" value="local" checked><label for="mTgtLocal">@前</label>
+          <input type="radio" name="mtgt" id="mTgtTotal" value="total"><label for="mTgtTotal">全体</label>
+          <input type="number" id="mailLen" min="1" max="1024" step="1" value="32" inputmode="numeric" aria-label="メールの文字数" style="width:6em">
+          <button type="button" id="mailBtnCustom">生成</button>
+        </div>
+      </div>
       <div class="actions">
         <span class="status" id="mailStatus" role="status"></span>
         <button type="button" id="mailCopyLocal">@前をコピー</button>
@@ -204,7 +220,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 
   const DOMAIN = "@poet.blue";
   // total=true: アドレス全体で64文字 / false: @より前が64文字
-  function makeMail(total) { return randString(ALNUM, (total || 0) ? total - DOMAIN.length : 64) + DOMAIN; }
+  // spec: {total:true|false, n}。大文字「なし」なら小文字+数字のみ
+  function mailChars() { return document.getElementById("mUpOff").checked ? LOWER + DIGIT : ALNUM; }
+  function makeMail(spec) { return randString(mailChars(), spec.total ? spec.n - DOMAIN.length : spec.n) + DOMAIN; }
 
   function makePassword(len) {
     const sym = symbolSet();
@@ -278,19 +296,35 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
   }
 
   const mailMeta = document.getElementById("mailMeta");
-  function mailLabel(total) {
-    return total ? `全体${total}文字（@前${total - DOMAIN.length}文字）` : "@前64文字（全体74文字）";
+  function mailLabel(s) {
+    const up = document.getElementById("mUpOff").checked ? " / 大文字なし" : "";
+    return (s.total ? `全体${s.n}文字（@前${s.n - DOMAIN.length}文字）` : `@前${s.n}文字（全体${s.n + DOMAIN.length}文字）`) + up;
   }
-  function mailHandler(total) {
+  let mailSpec = { total: true, n: 64 };
+  function showMail() {
+    renderMail(makeMail(mailSpec)); flash(mailOut); mailMeta.textContent = mailLabel(mailSpec);
+  }
+  function mailHandler(spec) {
     return async () => {
-      const m = makeMail(total); renderMail(m); flash(mailOut);
-      mailMeta.textContent = mailLabel(total);
-      setStatus(document.getElementById("mailStatus"), await copy(m, mailOut));
+      mailSpec = spec; showMail();
+      setStatus(document.getElementById("mailStatus"), await copy(currentMail, mailOut));
     };
   }
-  document.getElementById("mailBtn64").addEventListener("click", mailHandler(64));
-  document.getElementById("mailBtn50").addEventListener("click", mailHandler(50));
-  document.getElementById("mailBtnLocal").addEventListener("click", mailHandler(false));
+  document.getElementById("mailBtn64").addEventListener("click", mailHandler({ total: true, n: 64 }));
+  document.getElementById("mailBtn50").addEventListener("click", mailHandler({ total: true, n: 50 }));
+  document.getElementById("mailBtnLocal").addEventListener("click", mailHandler({ total: false, n: 64 }));
+  // 任意の文字数：全体指定の下限は「@poet.blue」+1文字
+  function customMailSpec() {
+    const total = document.getElementById("mTgtTotal").checked;
+    const min = total ? DOMAIN.length + 1 : 1;
+    const n = Math.min(1024, Math.max(min, Math.floor(+document.getElementById("mailLen").value) || min));
+    document.getElementById("mailLen").value = n;
+    return { total, n };
+  }
+  document.getElementById("mailBtnCustom").addEventListener("click", () => mailHandler(customMailSpec())());
+  document.getElementById("mailLen").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("mailBtnCustom").click(); });
+  // 大文字の切替は直前の指定のまま再生成してコピー
+  document.querySelectorAll('input[name="mup"]').forEach(r => r.addEventListener("change", () => mailHandler(mailSpec)()));
   // 現在のアドレスの一部だけをコピー（生成はしない）
   async function copyMailPart(part) {
     const i = currentMail.indexOf("@");
@@ -327,8 +361,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
   lenNum.addEventListener("keydown", e => { if (e.key === "Enter") { lenNum.blur(); } });
 
   // 初期表示（コピーはしない）
-  renderMail(makeMail(64));
-  mailMeta.textContent = mailLabel(64);
+  renderMail(makeMail(mailSpec));
+  mailMeta.textContent = mailLabel(mailSpec);
   paint(pwOut, makePassword(currentLen()));
   updateMeta();
 })();

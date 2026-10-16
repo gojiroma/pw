@@ -63,13 +63,12 @@ input[type=text],select{
   background:var(--bg); border:1px solid var(--line); border-radius:6px;
   padding:8px 10px; width:100%;
 }
-.seg{display:flex; border:1px solid var(--line); border-radius:6px; overflow:hidden}
+.seg{display:flex; flex-wrap:wrap; gap:6px}
 .seg input{position:absolute; opacity:0; pointer-events:none}
 .seg label{
   font-family:var(--f-mono); font-size:.85rem; color:var(--fg); letter-spacing:0;
-  padding:8px 14px; cursor:pointer; background:var(--bg); border-left:1px solid var(--line);
+  padding:6px 10px; cursor:pointer; background:var(--bg); border:1px solid var(--line); border-radius:6px;
 }
-.seg label:first-of-type{border-left:0}
 .seg input:checked + label{background:var(--accent); color:var(--accent-fg)}
 .seg input:focus-visible + label{outline:2px solid var(--accent); outline-offset:-4px}
 .actions{display:flex; align-items:center; gap:12px; margin-left:auto}
@@ -121,14 +120,25 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
       <div class="field">
         <span id="lenLabel" style="font-size:.75rem;color:var(--muted);letter-spacing:.04em">文字数</span>
         <div class="seg" role="radiogroup" aria-labelledby="lenLabel">
+          <input type="radio" name="len" id="len8" value="8"><label for="len8">8</label>
+          <input type="radio" name="len" id="len10" value="10"><label for="len10">10</label>
           <input type="radio" name="len" id="len12" value="12"><label for="len12">12</label>
           <input type="radio" name="len" id="len16" value="16"><label for="len16">16</label>
           <input type="radio" name="len" id="len20" value="20"><label for="len20">20</label>
+          <input type="radio" name="len" id="len24" value="24"><label for="len24">24</label>
           <input type="radio" name="len" id="len32" value="32"><label for="len32">32</label>
+          <input type="radio" name="len" id="len40" value="40"><label for="len40">40</label>
           <input type="radio" name="len" id="len45" value="45"><label for="len45">45</label>
+          <input type="radio" name="len" id="len48" value="48"><label for="len48">48</label>
+          <input type="radio" name="len" id="len50" value="50"><label for="len50">50</label>
           <input type="radio" name="len" id="len64" value="64" checked><label for="len64">64</label>
           <input type="radio" name="len" id="len72" value="72"><label for="len72">72</label>
+          <input type="radio" name="len" id="len80" value="80"><label for="len80">80</label>
+          <input type="radio" name="len" id="len99" value="99"><label for="len99">99</label>
+          <input type="radio" name="len" id="len100" value="100"><label for="len100">100</label>
           <input type="radio" name="len" id="len128" value="128"><label for="len128">128</label>
+          <input type="radio" name="len" id="len255" value="255"><label for="len255">255</label>
+          <input type="radio" name="len" id="len256" value="256"><label for="len256">256</label>
         </div>
       </div>
       <div class="field grow">
@@ -140,7 +150,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
         <button type="button" id="pwBtn">生成してコピー</button>
       </div>
     </div>
-    <p class="note">大文字・小文字・数字・記号（「なし」選択時は除く）を必ず1文字以上含みます。記号欄はクリックで空になり、空のまま離れると元に戻ります。</p>
+    <p class="note">大文字・小文字・数字・記号（「なし」選択時は除く）を必ず1文字以上含みます。記号欄はクリックで空になり、空のまま離れると元に戻ります。ペーストすると重複・英数字・空白を除いた記号だけに整形されます。</p>
   </section>
 </main>
 
@@ -258,6 +268,13 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
   symInput.addEventListener("focus", () => { lastSym = symInput.value; symInput.value = ""; });
   symInput.addEventListener("blur", () => { if (symInput.value === "") symInput.value = lastSym; updateMeta(); });
   symInput.addEventListener("input", updateMeta);
+  // ペースト時は英数字・空白を除き、重複のない文字列に整形して置き換える
+  symInput.addEventListener("paste", e => {
+    e.preventDefault();
+    const raw = (e.clipboardData || window.clipboardData).getData("text");
+    symInput.value = [...new Set([...raw].filter(c => !/[A-Za-z0-9\s]/.test(c)))].join("");
+    updateMeta();
+  });
   const noSym = document.getElementById("noSym");
   noSym.addEventListener("change", () => { symInput.disabled = noSym.checked; regenPassword(); });
   document.querySelectorAll('input[name="len"]').forEach(r => r.addEventListener("change", regenPassword));

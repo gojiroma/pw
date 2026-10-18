@@ -112,29 +112,13 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
     </div>
     <div class="outrow"><div class="out" id="mailOut" tabindex="0"></div><div class="qr" id="mailQr" role="img" aria-label="メールアドレスのQRコード"></div></div>
     <div class="controls">
-      <div class="field">
-        <span id="mUpLabel" style="font-size:.75rem;color:var(--muted);letter-spacing:.04em">大文字</span>
-        <div class="seg" role="radiogroup" aria-labelledby="mUpLabel">
-          <input type="radio" name="mup" id="mUpOn" value="on" checked><label for="mUpOn">あり</label>
-          <input type="radio" name="mup" id="mUpOff" value="off"><label for="mUpOff">なし</label>
-        </div>
-      </div>
-      <div class="field">
-        <span id="mTgtLabel" style="font-size:.75rem;color:var(--muted);letter-spacing:.04em">任意の文字数</span>
-        <div class="seg" role="radiogroup" aria-labelledby="mTgtLabel">
-          <input type="radio" name="mtgt" id="mTgtLocal" value="local" checked><label for="mTgtLocal">@前</label>
-          <input type="radio" name="mtgt" id="mTgtTotal" value="total"><label for="mTgtTotal">全体</label>
-          <input type="number" id="mailLen" min="1" max="1024" step="1" value="32" inputmode="numeric" aria-label="メールの文字数" style="width:6em">
-          <button type="button" id="mailBtnCustom">生成</button>
-        </div>
+      <div class="field grow">
+        <label for="mailPrefix">プレフィックス（任意・小文字に変換）</label>
+        <input type="text" id="mailPrefix" maxlength="30" spellcheck="false" autocomplete="off" autocapitalize="none" placeholder="なしなら空欄">
       </div>
       <div class="actions">
         <span class="status" id="mailStatus" role="status"></span>
-        <button type="button" id="mailCopyLocal">@前をコピー</button>
-        <button type="button" id="mailCopyDomain">@以降をコピー</button>
-        <button type="button" id="mailBtn64">全体64文字</button>
-        <button type="button" id="mailBtn50">全体50文字</button>
-        <button type="button" id="mailBtnLocal">@前64文字</button>
+        <button type="button" id="mailBtn">生成してコピー</button>
       </div>
     </div>
   </section>
@@ -147,7 +131,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
     <div class="outrow"><div class="out" id="pwOut" tabindex="0"></div><div class="qr" id="pwQr" role="img" aria-label="パスワードのQRコード"></div></div>
     <div class="controls">
       <div class="field">
-        <label for="lenNum" id="lenLabel">文字数 <input type="number" id="lenNum" min="4" max="1024" step="1" value="64" inputmode="numeric" style="width:6em;margin-left:8px"></label>
+        <span id="lenLabel" style="font-size:.75rem;color:var(--muted);letter-spacing:.04em">文字数</span>
         <div class="seg" role="radiogroup" aria-labelledby="lenLabel">
           <input type="radio" name="len" id="len8" value="8"><label for="len8">8</label>
           <input type="radio" name="len" id="len10" value="10"><label for="len10">10</label>
@@ -173,18 +157,18 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
       <div class="field grow">
         <span id="symLabel" style="font-size:.75rem;color:var(--muted);letter-spacing:.04em">記号</span>
         <div class="seg big" role="radiogroup" aria-labelledby="symLabel">
-          <input type="radio" name="sym" id="symOn" value="on" checked><label for="symOn">あり</label>
-          <input type="radio" name="sym" id="symOff" value="off"><label for="symOff">なし</label>
+          <input type="radio" name="sym" id="symOn" value="on"><label for="symOn">あり</label>
+          <input type="radio" name="sym" id="symOff" value="off" checked><label for="symOff">なし</label>
         </div>
         <label for="symbols" class="sr">使う記号</label>
-        <input type="text" id="symbols" value="!#$%&amp;()*+-./:;=?@[]^_{|}~" spellcheck="false" autocomplete="off">
+        <input type="text" id="symbols" value="!#$%&amp;()*+-./:;=?@[]^_{|}~" spellcheck="false" autocomplete="off" disabled>
       </div>
       <div class="actions">
         <span class="status" id="pwStatus" role="status"></span>
         <button type="button" id="pwBtn">生成してコピー</button>
       </div>
     </div>
-    <p class="note">大文字・小文字・数字・記号（記号「なし」選択時は除く）を必ず1文字以上含みます。記号欄はクリックで空になり、空のまま離れると元に戻ります。ペーストすると重複・英数字・空白を除いた記号だけに整形されます。</p>
+    <p class="note">大文字・小文字・数字・記号（記号「なし」選択時は除く）を必ず1文字以上含みます。記号は初期状態で「なし」です。記号欄はクリックで空になり、空のまま離れると元に戻ります。ペーストすると重複・英数字・空白を除いた記号だけに整形されます。</p>
   </section>
 </main>
 
@@ -219,10 +203,14 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
   }
 
   const DOMAIN = "@poet.blue";
-  // total=true: アドレス全体で64文字 / false: @より前が64文字
-  // spec: {total:true|false, n}。大文字「なし」なら小文字+数字のみ
-  function mailChars() { return document.getElementById("mUpOff").checked ? LOWER + DIGIT : ALNUM; }
-  function makeMail(spec) { return randString(mailChars(), spec.total ? spec.n - DOMAIN.length : spec.n) + DOMAIN; }
+  const MAIL_TOTAL = 50; // アドレス全体の文字数（固定）
+  const MAIL_CHARS = LOWER + DIGIT; // メールは常に小文字+数字
+  const mailPrefix = document.getElementById("mailPrefix");
+  function currentPrefix() { return mailPrefix.value.toLowerCase().replace(/\s/g, ""); }
+  function makeMail() {
+    const p = currentPrefix();
+    return p + randString(MAIL_CHARS, MAIL_TOTAL - DOMAIN.length - p.length) + DOMAIN;
+  }
 
   function makePassword(len) {
     const sym = symbolSet();
@@ -284,55 +272,23 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
     mailOut.append(d);
     drawQr(document.getElementById("mailQr"), addr);
   }
-  const lenNum = document.getElementById("lenNum");
-  function currentLen() { return Math.min(1024, Math.max(4, Math.floor(+lenNum.value) || 64)); }
-  function syncRadio() {
-    const r = document.getElementById("len" + currentLen());
-    document.querySelectorAll('input[name="len"]').forEach(x => x.checked = (x === r));
-  }
+  function currentLen() { return +document.querySelector('input[name="len"]:checked').value; }
   function updateMeta() {
     const sym = symbolSet();
     pwMeta.textContent = `${currentLen()}文字 / 候補 ${62 + sym.length}種`;
   }
 
   const mailMeta = document.getElementById("mailMeta");
-  function mailLabel(s) {
-    const up = document.getElementById("mUpOff").checked ? " / 大文字なし" : "";
-    return (s.total ? `全体${s.n}文字（@前${s.n - DOMAIN.length}文字）` : `@前${s.n}文字（全体${s.n + DOMAIN.length}文字）`) + up;
-  }
-  let mailSpec = { total: true, n: 64 };
   function showMail() {
-    renderMail(makeMail(mailSpec)); flash(mailOut); mailMeta.textContent = mailLabel(mailSpec);
+    const p = currentPrefix();
+    renderMail(makeMail()); flash(mailOut);
+    mailMeta.textContent = `全体${MAIL_TOTAL}文字（プレフィックス${p.length} + ランダム${MAIL_TOTAL - DOMAIN.length - p.length}）`;
   }
-  function mailHandler(spec) {
-    return async () => {
-      mailSpec = spec; showMail();
-      setStatus(document.getElementById("mailStatus"), await copy(currentMail, mailOut));
-    };
-  }
-  document.getElementById("mailBtn64").addEventListener("click", mailHandler({ total: true, n: 64 }));
-  document.getElementById("mailBtn50").addEventListener("click", mailHandler({ total: true, n: 50 }));
-  document.getElementById("mailBtnLocal").addEventListener("click", mailHandler({ total: false, n: 64 }));
-  // 任意の文字数：全体指定の下限は「@poet.blue」+1文字
-  function customMailSpec() {
-    const total = document.getElementById("mTgtTotal").checked;
-    const min = total ? DOMAIN.length + 1 : 1;
-    const n = Math.min(1024, Math.max(min, Math.floor(+document.getElementById("mailLen").value) || min));
-    document.getElementById("mailLen").value = n;
-    return { total, n };
-  }
-  document.getElementById("mailBtnCustom").addEventListener("click", () => mailHandler(customMailSpec())());
-  document.getElementById("mailLen").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("mailBtnCustom").click(); });
-  // 大文字の切替は直前の指定のまま再生成してコピー
-  document.querySelectorAll('input[name="mup"]').forEach(r => r.addEventListener("change", () => mailHandler(mailSpec)()));
-  // 現在のアドレスの一部だけをコピー（生成はしない）
-  async function copyMailPart(part) {
-    const i = currentMail.indexOf("@");
-    const text = part === "local" ? currentMail.slice(0, i) : currentMail.slice(i);
-    setStatus(document.getElementById("mailStatus"), await copy(text, mailOut));
-  }
-  document.getElementById("mailCopyLocal").addEventListener("click", () => copyMailPart("local"));
-  document.getElementById("mailCopyDomain").addEventListener("click", () => copyMailPart("domain"));
+  document.getElementById("mailBtn").addEventListener("click", async () => {
+    showMail();
+    setStatus(document.getElementById("mailStatus"), await copy(currentMail, mailOut));
+  });
+  mailPrefix.addEventListener("input", () => { mailPrefix.value = mailPrefix.value.toLowerCase(); showMail(); });
   async function regenPassword() {
     const p = makePassword(currentLen()); paint(pwOut, p); flash(pwOut); updateMeta();
     setStatus(document.getElementById("pwStatus"), await copy(p, pwOut));
@@ -355,14 +311,10 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
   document.querySelectorAll('input[name="sym"]').forEach(r => r.addEventListener("change", () => {
     symInput.disabled = document.getElementById("symOff").checked; regenPassword();
   }));
-  document.querySelectorAll('input[name="len"]').forEach(r => r.addEventListener("change", () => { lenNum.value = r.value; regenPassword(); }));
-  lenNum.addEventListener("input", () => { syncRadio(); updateMeta(); });
-  lenNum.addEventListener("change", () => { lenNum.value = currentLen(); syncRadio(); regenPassword(); });
-  lenNum.addEventListener("keydown", e => { if (e.key === "Enter") { lenNum.blur(); } });
+  document.querySelectorAll('input[name="len"]').forEach(r => r.addEventListener("change", regenPassword));
 
   // 初期表示（コピーはしない）
-  renderMail(makeMail(mailSpec));
-  mailMeta.textContent = mailLabel(mailSpec);
+  showMail();
   paint(pwOut, makePassword(currentLen()));
   updateMeta();
 })();

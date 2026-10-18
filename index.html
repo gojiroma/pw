@@ -50,7 +50,22 @@ section{
   font-family:var(--f-mono); font-size:.92rem; line-height:1.55;
   background:var(--bg); border:1px solid var(--line); border-radius:6px;
   padding:12px 14px; min-height:3.2em; word-break:break-all; overflow-wrap:anywhere;
-  user-select:all; cursor:text;
+  user-select:all; cursor:pointer; position:relative;
+  transition:border-color .15s, background-color .15s, transform .1s;
+}
+.out:hover{border-color:var(--accent)}
+.out:active{transform:scale(.995)}
+.out::after{
+  content:attr(data-badge); position:absolute; top:8px; right:8px;
+  font-family:var(--f-ui); font-size:.72rem; font-weight:700; letter-spacing:.03em;
+  padding:2px 8px; border-radius:999px; background:var(--ok); color:var(--bg);
+  opacity:0; transform:translateY(-4px); pointer-events:none;
+  transition:opacity .15s, transform .15s;
+}
+.out[data-badge]::after{opacity:1; transform:none}
+.out[data-badge]{border-color:var(--ok)}
+.out:not([data-badge]):hover::after{
+  content:"クリックでコピー"; opacity:.9; transform:none; background:var(--accent); color:var(--accent-fg);
 }
 .out .dom{color:var(--accent); font-weight:500}
 .out .num{color:var(--digit); font-weight:500}
@@ -89,11 +104,15 @@ button{
   padding:10px 18px; cursor:pointer;
 }
 button:hover{filter:brightness(1.08)}
+button:active{transform:translateY(1px) scale(.98)}
+button{transition:transform .08s, filter .15s}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 .status{font-size:.8rem; color:var(--ok); min-width:6em; text-align:right}
 .note{font-size:.75rem; color:var(--muted); margin:0}
 @media (prefers-reduced-motion: no-preference){
   .out.flash{animation:flash .5s ease}
+  .qr.pop{animation:pop .35s ease}
+  @keyframes pop{40%{transform:scale(1.04)}}
   @keyframes flash{from{border-color:var(--accent)}to{border-color:var(--line)}}
 }
 </style>
@@ -110,7 +129,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
       <h2 id="mail-h">メールアドレス</h2>
       <span class="meta" id="mailMeta"></span>
     </div>
-    <div class="outrow"><div class="out" id="mailOut" tabindex="0"></div><div class="qr" id="mailQr" role="img" aria-label="メールアドレスのQRコード"></div></div>
+    <div class="outrow"><div class="out" id="mailOut" tabindex="0" role="button" aria-label="メールアドレス（クリックでコピー）"></div><div class="qr" id="mailQr" role="img" aria-label="メールアドレスのQRコード"></div></div>
     <div class="controls">
       <div class="field grow">
         <label for="mailPrefix">プレフィックス（任意・小文字に変換）</label>
@@ -128,7 +147,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
       <h2 id="pw-h">パスワード</h2>
       <span class="meta" id="pwMeta"></span>
     </div>
-    <div class="outrow"><div class="out" id="pwOut" tabindex="0"></div><div class="qr" id="pwQr" role="img" aria-label="パスワードのQRコード"></div></div>
+    <div class="outrow"><div class="out" id="pwOut" tabindex="0" role="button" aria-label="パスワード（クリックでコピー）"></div><div class="qr" id="pwQr" role="img" aria-label="パスワードのQRコード"></div></div>
     <div class="controls">
       <div class="field">
         <span id="lenLabel" style="font-size:.75rem;color:var(--muted);letter-spacing:.04em">文字数</span>
@@ -242,6 +261,17 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
       el.innerHTML = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
     } catch (e) { el.textContent = ""; }
   }
+  // 表示欄のコピー結果をバッジで知らせる（ok:コピー済み / sel:選択のみ）
+  function badge(el, ok) {
+    el.dataset.badge = ok ? "✓ コピーしました" : "選択しました（手動でコピー）";
+    const qr = document.getElementById(el === mailOut ? "mailQr" : "pwQr");
+    qr.classList.remove("pop"); void qr.offsetWidth; qr.classList.add("pop");
+    clearTimeout(el._b); el._b = setTimeout(() => delete el.dataset.badge, 1400);
+  }
+  async function copyOut(el, text, statusEl) {
+    const ok = await copy(text, el);
+    badge(el, ok); setStatus(statusEl, ok);
+  }
   function flash(el) { el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
   function setStatus(el, ok) {
     el.textContent = ok ? "コピーしました" : "選択済み・手動でコピー";
@@ -254,6 +284,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 
   // 数字の連続を色付きspanで包んで描画
   function paint(el, text) {
+    if (el === pwOut) currentPw = text;
     if (el === pwOut) drawQr(document.getElementById("pwQr"), text);
     el.innerHTML = "";
     for (const part of text.split(/(\d+)/)) {
@@ -263,7 +294,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
       } else el.append(part);
     }
   }
-  let currentMail = "";
+  let currentMail = "", currentPw = "";
   function renderMail(addr) {
     currentMail = addr;
     const [local] = addr.split("@");
@@ -286,12 +317,20 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
   }
   document.getElementById("mailBtn").addEventListener("click", async () => {
     showMail();
-    setStatus(document.getElementById("mailStatus"), await copy(currentMail, mailOut));
+    copyOut(mailOut, currentMail, document.getElementById("mailStatus"));
   });
+  // 表示欄のクリック／Enter／Spaceで再コピー
+  function bindCopy(el, getText, statusId) {
+    const go = () => copyOut(el, getText(), document.getElementById(statusId));
+    el.addEventListener("click", go);
+    el.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+  }
+  bindCopy(mailOut, () => currentMail, "mailStatus");
+  bindCopy(pwOut, () => currentPw, "pwStatus");
   mailPrefix.addEventListener("input", () => { mailPrefix.value = mailPrefix.value.toLowerCase(); showMail(); });
-  async function regenPassword() {
+  function regenPassword() {
     const p = makePassword(currentLen()); paint(pwOut, p); flash(pwOut); updateMeta();
-    setStatus(document.getElementById("pwStatus"), await copy(p, pwOut));
+    copyOut(pwOut, p, document.getElementById("pwStatus"));
   }
   document.getElementById("pwBtn").addEventListener("click", regenPassword);
 
